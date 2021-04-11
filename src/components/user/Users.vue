@@ -33,8 +33,8 @@
       </el-row>
 
       <!-- 用户列表区域 -->
-      <el-table :data="userlist" stripe border>
-        <el-table-column label="序号" type="index"></el-table-column>
+      <el-table :data="userlist" border stripe>
+        <el-table-column type="index"></el-table-column>
         <el-table-column label="姓名" prop="username"></el-table-column>
         <el-table-column label="邮箱" prop="email"></el-table-column>
         <el-table-column label="电话" prop="mobile"></el-table-column>
@@ -48,7 +48,7 @@
             </el-switch>
           </template>
         </el-table-column>
-        <el-table-column label="操作">
+        <el-table-column label="操作" width="180px">
           <template slot-scope="scope">
             <!-- 修改按钮 -->
             <el-button
@@ -99,14 +99,14 @@
     <el-dialog
       title="添加用户"
       :visible.sync="addDialogVisible"
-      @close="addDialogClosed"
       width="50%"
+      @close="addDialogClosed"
     >
       <!-- 内容主体区域 -->
       <el-form
-        ref="addFormRef"
         :model="addForm"
         :rules="addFormRules"
+        ref="addFormRef"
         label-width="70px"
       >
         <el-form-item label="用户名" prop="username">
@@ -133,10 +133,9 @@
     <el-dialog
       title="修改用户"
       :visible.sync="editDialogVisible"
-      @close="editDialogClosed"
       width="50%"
+      @close="editDialogClosed"
     >
-      <!-- 添加修改用户信息的表单 -->
       <el-form
         :model="editForm"
         :rules="editFormRules"
@@ -153,7 +152,6 @@
           <el-input v-model="editForm.mobile"></el-input>
         </el-form-item>
       </el-form>
-      <!-- 底部按钮 -->
       <span slot="footer" class="dialog-footer">
         <el-button @click="editDialogVisible = false">取 消</el-button>
         <el-button type="primary" @click="editUserInfo">确 定</el-button>
@@ -194,15 +192,16 @@
 <script>
 export default {
   data() {
-    // 1.在 data 中定义一个箭头函数设置自定义规则
+    // 验证邮箱的规则
     var checkEmail = (rule, value, cb) => {
-      // 2.定义验证邮箱的正则表达式
+      // 验证邮箱的正则表达式
       const regEmail = /^([a-zA-Z0-9_-])+@([a-zA-Z0-9_-])+(\.[a-zA-Z0-9_-])+/
-      // 3.使用正则方法判断
+
       if (regEmail.test(value)) {
-        // 4.判断通过，调用回调函数
+        // 合法的邮箱
         return cb()
       }
+
       cb(new Error('请输入合法的邮箱'))
     }
 
@@ -303,10 +302,9 @@ export default {
       if (res.meta.status !== 200) {
         return this.$message.error('获取用户列表失败！')
       }
-      //如果返回状态正常，将请求的数据保存在data中 用于<el-table>、<el-pagination>渲染
       this.userlist = res.data.users
       this.total = res.data.total
-      // console.log(res)
+      console.log(res)
     },
     // 监听 pagesize 改变的事件
     handleSizeChange(newSize) {
@@ -316,7 +314,7 @@ export default {
     },
     // 监听 页码值 改变的事件
     handleCurrentChange(newPage) {
-      // console.log(newPage)
+      console.log(newPage)
       this.queryInfo.pagenum = newPage
       this.getUserList()
     },
@@ -338,20 +336,19 @@ export default {
     },
     // 点击按钮，添加新用户
     addUser() {
-      // 1.验证表单内容格式
       this.$refs.addFormRef.validate(async (valid) => {
-        // 验证不通过直接返回
         if (!valid) return
-        // 2.验证通过后发起添加用户的网络请求
+        // 可以发起添加用户的网络请求
         const { data: res } = await this.$http.post('users', this.addForm)
-        // 3.验证状态码
+
         if (res.meta.status !== 201) {
-          return this.$message.error('添加用户失败！')
+          this.$message.error('添加用户失败！')
         }
+
         this.$message.success('添加用户成功！')
-        // 4.隐藏添加用户的对话框
+        // 隐藏添加用户的对话框
         this.addDialogVisible = false
-        // 5.重新获取用户列表数据
+        // 重新获取用户列表数据
         this.getUserList()
       })
     },
@@ -359,6 +356,7 @@ export default {
     async showEditDialog(id) {
       // console.log(id)
       const { data: res } = await this.$http.get('users/' + id)
+
       if (res.meta.status !== 200) {
         return this.$message.error('查询用户信息失败！')
       }
@@ -399,67 +397,72 @@ export default {
     async removeUserById(id) {
       // 弹框询问用户是否删除数据
       const confirmResult = await this.$confirm(
-        '此操作将永久删除该用户, 是否继续?',
-        '提示',
+        '请问是否要永久删除该用户',
+        '删除提示',
         {
-          confirmButtonText: '确定',
+          confirmButtonText: '确认删除',
           cancelButtonText: '取消',
           type: 'warning',
         }
       ).catch((err) => err)
-
+      // 2.判断用户点击的是哪个确认还是取消
       // 如果用户确认删除，则返回值为字符串 confirm
       // 如果用户取消了删除，则返回值为字符串 cancel
       // console.log(confirmResult)
       if (confirmResult !== 'confirm') {
         return this.$message.info('已取消删除')
       }
-
+      // 3.发送请求根据id完成删除操作
       const { data: res } = await this.$http.delete('users/' + id)
-
+      // 4.判断状态码，如果删除失败，进行信息提示
       if (res.meta.status !== 200) {
         return this.$message.error('删除用户失败！')
       }
-
       this.$message.success('删除用户成功！')
+      // 5.重新请求最新的数据
       this.getUserList()
     },
-    // 展示分配角色的对话框
+    //点击"分配角色"按钮时调用
     async setRole(userInfo) {
+      //1.保存当前用户信息(渲染至分配角色对话框)
       this.userInfo = userInfo
-
-      // 在展示对话框之前，获取所有角色的列表
+      //获取所有的角色信息，以备下拉列表使用
+      //2.发送请求根据id请求数据
       const { data: res } = await this.$http.get('roles')
+      //3.判断验证码，如果删除失败，就做提示
       if (res.meta.status !== 200) {
         return this.$message.error('获取角色列表失败！')
       }
-
+      //4.验证码正确，保存数据
       this.rolesList = res.data
-
+      //5.显示"分配角色"对话框
       this.setRoleDialogVisible = true
     },
-    // 点击按钮，分配角色
+    // 点击"分配角色"对话框中的确定按钮时触发
     async saveRoleInfo() {
+      //1.判断用户是否选择了需要分配的角色
       if (!this.selectedRoleId) {
         return this.$message.error('请选择要分配的角色！')
       }
-
+      //2.发送请求完成分配角色的操作
       const { data: res } = await this.$http.put(
         `users/${this.userInfo.id}/role`,
         {
           rid: this.selectedRoleId,
         }
       )
-
+      //3.判断状态码，如果更新失败，弹出消息提示
       if (res.meta.status !== 200) {
         return this.$message.error('更新角色失败！')
       }
-
       this.$message.success('更新角色成功！')
+      //4.(状态码成功)更新用户列表
       this.getUserList()
+      //5.关闭对话框
       this.setRoleDialogVisible = false
     },
-    // 监听分配角色对话框的关闭事件
+    // "分配角色"对话框关闭时触发
+    //重置下拉框中的内容
     setRoleDialogClosed() {
       this.selectedRoleId = ''
       this.userInfo = {}
